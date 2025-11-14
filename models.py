@@ -68,68 +68,68 @@ class SeqAttention(nn.Module):
             if self.adapt_span_enabled:
                 self.persistent_memory.adaptive_span = self.adaptive_span
 
- def forward(self, query, key, value, key_pe):
+    def forward(self, query, key, value, key_pe):
         # query size = B x M x H
         # key, value sizes = B x (M+L) x H
-
-  # ENTRADA: 
-  # query size = B x M x H
-  # key, value sizes = B x (M+L) x H  
-  # key_pe = position embeddings
-
-  # query: Los M tokens actuales que queremos procesar
-  # key, value: Contexto completo = cache (L tokens antiguos) + tokens actuales (M)
-  # key_pe: Position embeddings relativos, forma (1, H, L)
-   
+    
+    # ENTRADA: 
+    # query size = B x M x H
+    # key, value sizes = B x (M+L) x H  
+    # key_pe = position embeddings
+    
+    # query: Los M tokens actuales que queremos procesar
+    # key, value: Contexto completo = cache (L tokens antiguos) + tokens actuales (M)
+    # key_pe: Position embeddings relativos, forma (1, H, L)
+    
         if self.adapt_span_enabled:
             # [optional] trim out memory to reduce unnecessary computation
             key, value, key_pe = self.adaptive_span.trim_memory(
                 query, key, value, key_pe)
-  # Recorta tokens antiguos que nunca serán atendidos según el span actual.
-  
+    # Recorta tokens antiguos que nunca serán atendidos según el span actual.
+    
         # compute attention from context
         # B x M (dest) x (M+L) (src)
         attn_cont = torch.matmul(query, key.transpose(-1, -2))
         attn_cont = _unskew(attn_cont)  # B x M x L
-  # Calcula scores de atención basados en el **contenido** (query · key)
-  
-   
+    # Calcula scores de atención basados en el **contenido** (query · key)
+    
+    
         # compute the effect of position embedding
         attn_pos = torch.matmul(query, key_pe)  # B x M x L_pos
         attn = attn_cont + attn_pos
-  # Agrega información de posiciones relativas.
-   
+    # Agrega información de posiciones relativas.
+    
         if self.persistent_memory is not None:
             attn, pers_mem_out = self.persistent_memory(query, attn)
         else:
             attn = attn / math.sqrt(self.hidden_size)  # B x M X L_pos
-  # Scaling
+    # Scaling
             attn = F.softmax(attn, dim=-1)
-  # Convierte scores a probabilidades
-  # Suma a 1 en la dimensión del span
-
-
+    # Convierte scores a probabilidades
+    # Suma a 1 en la dimensión del span
+    
+    
             if self.adapt_span_enabled:
                 # trim attention lengths according to the learned span
-  # Cada cabeza enmascara según su span aprendido
+    # Cada cabeza enmascara según su span aprendido
                 attn = self.adaptive_span(attn)
-
+    
         attn = self.dropout(attn)  # B x M X L_pos
-  # Regularización - aleatoriamente pone algunos pesos en 0 durante entrenamiento.
-
-
+    # Regularización - aleatoriamente pone algunos pesos en 0 durante entrenamiento.
+    
+    
         attn_cont = _skew(attn, 0)  # B x M X (L+M)
         out = torch.matmul(attn_cont, value)  # B x M x H
-  # Usa los pesos de atención para combinar los valores.
-
-
+    # Usa los pesos de atención para combinar los valores.
+    
+    
         if self.persistent_memory is not None:
             out = out + pers_mem_out
-
+    
         return out
 
 
- def get_cache_size(self):
+    def get_cache_size(self):
       if self.adapt_span_enabled:
           return self.adaptive_span.get_cache_size()
       else:
