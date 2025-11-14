@@ -1,7 +1,7 @@
-  """
-  Adaptive Attention Span mechanism
-  implementación de la función de enmascaramiento
-  """
+"""
+Adaptive Attention Span mechanism
+implementación de la función de enmascaramiento
+"""
 
 
 import torch
