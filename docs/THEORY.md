@@ -317,4 +317,36 @@ Log para monitorear → (NO tocar pesos)
 11. (Opcional) Full eval en test set
 
 
+### FLOPS
+
+Los FLOPS (Floating Point Operations) son operaciones matemáticas de punto flotante que una computadora realiza. En el contexto de redes neuronales, se usan para medir el costo computacional de un modelo.
+¿Qué son los FLOPS?
+Son operaciones básicas como:
+
+Sumas
+Multiplicaciones
+Divisiones
+Exponenciales
+
+Por ejemplo, multiplicar dos matrices de tamaño n x n requiere aproximadamente 2n³ FLOPS (n³ multiplicaciones + n³ sumas).
+¿Cómo se calculan en Transformers?
+En el paper, los FLOPS se calculan principalmente para dos componentes:
+1. Self-Attention Layer
+Para cada token en una secuencia de longitud M con span S:
+
+Query-Key similarity: 2 × M × S × d FLOPS
+
+M queries × S keys × d dimensiones × 2 (mult + suma)
+
+
+Attention-Value: 2 × M × S × d FLOPS
+Total por cabeza: 4 × M × S × d
+Total con H cabezas: 4 × M × S × d × H
+
+2. Feed-Forward Layer
+
+Primera capa lineal: 2 × M × d × d_ff
+Segunda capa lineal: 2 × M × d_ff × d
+Total: 4 × M × d × d_ff
+
 
