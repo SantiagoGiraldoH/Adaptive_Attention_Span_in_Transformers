@@ -99,7 +99,7 @@ def _build_corpus(data_path, env_params, sort_dict):
                 print('Waiting rank0 to create a corpus file.')
                 # sync with rank0
                 torch.distributed.broadcast(torch.zeros(1).cuda(), src=0)
-                corpus = torch.load(corpus_path)
+                corpus = torch.load(corpus_path, weights_only=False, map_location="cpu")
         else:
             corpus = Corpus(data_path, sort_dict)
             torch.save(corpus, corpus_path)
