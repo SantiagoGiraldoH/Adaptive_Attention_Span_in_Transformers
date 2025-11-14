@@ -1,9 +1,7 @@
 import math
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
 from adaptive_span import AdaptiveSpan
 from persistent_memory import PersistentMemory
 from adaptive_io import build_adaptive_io, compute_dummy_loss
