@@ -16,7 +16,7 @@ from utils import (
     save_checkpoint,
     Logger)
 
-
+# Dics vienen de config
 def launch(env_params,
            model_params,
            adapt_io_params,
