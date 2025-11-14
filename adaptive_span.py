@@ -9,7 +9,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import math
 
-class AdaptiveSpan(nn.Module):
+class AdaptiveMask(nn.Module):
 
 # Este módulo implementa la función de soft masking que permite a cada cabeza aprednder su span de atención óptimo, reduciendo memoria y computación
 # La función es: m_z(x) = min[max(1/R * (R + z - x), 0), 1]
