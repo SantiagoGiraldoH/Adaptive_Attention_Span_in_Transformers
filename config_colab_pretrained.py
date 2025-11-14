@@ -1,9 +1,8 @@
-
-3️⃣ config_colab_pretrained.py - Para evaluar modelos pre-entrenados
-python"""
-Configuración para evaluar modelos PRE-ENTRENADOS del paper
-NO entrena, solo evalúa
-"""
+#config_colab_pretrained.py - Para evaluar modelos pre-entrenados
+#python"""
+#Configuración para evaluar modelos PRE-ENTRENADOS del paper
+#NO entrena, solo evalúa
+#"""
 
 PARAMS_CONFIG = {
     # Environment
