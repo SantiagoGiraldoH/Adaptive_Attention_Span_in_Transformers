@@ -222,9 +222,10 @@ class TransformerSeqLayer(nn.Module):
     def __init__(self, hidden_size, **kargs):
         nn.Module.__init__(self)
         self.attn = MultiHeadSeqAttention(hidden_size=hidden_size, **kargs)
-        self.norm1 = nn.LayerNorm(hidden_size)
+        self.norm1 = nn.LayerNorm(hidden_size) # Primera capa de normalización, Mantiene activaciones en rango razonable
         if kargs['pers_mem_params']['pers_mem_size'] > 0:
             # replacing FF with persistent memory
+            # Para adpative span siempre se usa feedforward
             self.ff = None
         else:
             self.ff = FeedForwardLayer(hidden_size=hidden_size, **kargs)
@@ -233,9 +234,13 @@ class TransformerSeqLayer(nn.Module):
     def forward(self, h, h_cache, key_pe):
         # h = B x M x H
         # h_cache = B x L x H
-        h_all = torch.cat([h_cache, h], dim=1)  # B x (M+L) x H
+        
+        # h: Tokens actuales (B, M, H)
+        # h_cache: Historia/cache (B, L, H)
+        # key_pe: Position embeddings (1, H_head, L)
+        h_all = torch.cat([h_cache, h], dim=1)  # B x (M+L) x H (Concatenar cache con Tokens actuales)
         attn_out = self.attn(h, h_all, h_all, key_pe)
-        h = self.norm1(h + attn_out)  # B x M x H
+        h = self.norm1(h + attn_out)  # B x M x H (Skip cpnnection)
         if self.ff is not None:
             ff_out = self.ff(h)
             out = self.norm2(h + ff_out)  # B x M x H
@@ -244,12 +249,26 @@ class TransformerSeqLayer(nn.Module):
         return out
 
 class TransformerSeq(nn.Module):
+# Params:
+# vocab_size       Tamaño del vocabulario (ej: 27 para text8, 205 para enwik8)
+# hidden_size      Dimensión del modelo (ej: 512)
+# nb_heads         Número de cabezas de atención (ej: 8)
+# nb_layers        Número de capas Transformer (ej: 12)
+# attn_span        Span máximo de atención (ej: 8192)
+# emb_dropout      Dropout en embeddings (ej: 0.0)
+# adapt_io_params  Configuración de Adaptive I/O (puede estar deshabilitado)
+
+
+    
     def __init__(self, vocab_size, hidden_size, nb_heads, nb_layers,
                  attn_span, emb_dropout, adapt_io_params, **kargs):
         nn.Module.__init__(self)
         # token embeddings
         self.adapt_io = adapt_io_params['adapt_io_enabled']
         if self.adapt_io:
+            # Adaptive Input Representations for Neural Language Modeling
+            # Tokens frecuentes -> embeddings de alta dimensión (más capacidad)
+            # Tokens raros -> embeddings de baja dimensión (menos parámetros)
             self.in_emb, self.out_emb = build_adaptive_io(
                 vocab_size, hidden_size, **adapt_io_params)
         else:
@@ -271,6 +290,10 @@ class TransformerSeq(nn.Module):
             for _ in range(nb_layers))
 
     def forward(self, x, h_cache, target=None):
+        # x:        # Token IDs (B, M) - tokens a procesar
+        # h_cache:  # Lista de caches, uno por capa [(B, L, H), (B, L, H), ...]
+        # target:   # Token IDs objetivo (B, M) - para calcular loss (opcional)
+        
         # x size = B x M
         block_size = x.size(1)
         h = self.in_emb(x)  # B x M x H
@@ -279,8 +302,11 @@ class TransformerSeq(nn.Module):
 
         h_cache_next = []
         for l, layer in enumerate(self.layers):
+            #Loop sobre capas
             cache_size = layer.attn.attn.get_cache_size()
+            # Cada capa puede tener un cache diferente según span actual
             if cache_size > block_size:
+            
                 h_cache_next_l = torch.cat(
                     [h_cache[l][:, -cache_size + block_size:, :], h],
                     dim=1).detach()
