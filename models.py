@@ -42,14 +42,14 @@ class SeqAttention(nn.Module):
     Note that attention doesn't include the current step itself.
     """
   # Implementa self-attention secuencial con span adaptativo.
- def __init__(self, hidden_size, nb_heads, attn_span,
+    def __init__(self, hidden_size, nb_heads, attn_span,
                  dropout, adapt_span_params, pers_mem_params, **kargs):
-  # Args:
-  # hidden_size: Dimensión de UNA cabeza (ej: si el modelo tiene 512 dims y 8 cabezas, esto es 64)
-  # nb_heads: Número de cabezas de atención
-  # attn_span: Span máximo permitido
-  # adapt_span_params: Dict con configuración del adaptive span
-  # pers_mem_params: Para persistent memory (paper diferente, puede ser 0)
+    # Args:
+    # hidden_size: Dimensión de UNA cabeza (ej: si el modelo tiene 512 dims y 8 cabezas, esto es 64)
+    # nb_heads: Número de cabezas de atención
+    # attn_span: Span máximo permitido
+    # adapt_span_params: Dict con configuración del adaptive span
+    # pers_mem_params: Para persistent memory (paper diferente, puede ser 0)
                    
         nn.Module.__init__(self)
         self.dropout = nn.Dropout(dropout)
@@ -59,7 +59,7 @@ class SeqAttention(nn.Module):
         if self.adapt_span_enabled:
             self.adaptive_span = AdaptiveSpan(attn_span=attn_span, nb_heads=nb_heads,
                                               **adapt_span_params, **kargs)
-
+    
         self.persistent_memory = None
     # Opcional (0) para este ejercicio
         if pers_mem_params['pers_mem_size'] > 0:
