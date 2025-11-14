@@ -117,10 +117,59 @@ Input: query (tokens actuales), key/value (historia + actuales), key_pe
 Output: representaciones enriquecidas (B, M, H)
 
 
-Clase TransformerSeq(nn.Module)
-Esta es la clase principal - el modelo completo del Transformer secuencial con adaptive span.
+## Diagrama Completo del Forward
 
-Resumen General
+Input: h (B, M, H), h_cache (B, L, H), key_pe
+
+┌─────────────────────────────────────┐
+│ Paso 1: Concatenar                  │
+│ h_all = [h_cache | h]               │
+│ (B, L+M, H)                         │
+└─────────────────────────────────────┘
+           ↓
+┌─────────────────────────────────────┐
+│ Paso 2: Multi-Head Attention        │
+│ attn_out = attn(h, h_all, h_all)   │
+│ (B, M, H)                           │
+│                                     │
+│ Dentro: ⭐ Adaptive Span ⭐         │
+└─────────────────────────────────────┘
+           ↓
+┌─────────────────────────────────────┐
+│ Paso 3: Residual + LayerNorm        │
+│ h = norm1(h + attn_out)             │
+│                                     │
+│     h ──────┐                       │
+│     ↓       ↓                       │
+│   attn    (+)                       │
+│     ↓       ↓                       │
+│  attn_out  norm1                    │
+└─────────────────────────────────────┘
+           ↓
+┌─────────────────────────────────────┐
+│ Paso 4: FeedForward                 │
+│ ff_out = ff(h)                      │
+│ (B, M, H)                           │
+│                                     │
+│ H → 4H → H con ReLU                 │
+└─────────────────────────────────────┘
+           ↓
+┌─────────────────────────────────────┐
+│ Paso 5: Residual + LayerNorm        │
+│ out = norm2(h + ff_out)             │
+│                                     │
+│     h ──────┐                       │
+│     ↓       ↓                       │
+│    ff      (+)                      │
+│     ↓       ↓                       │
+│  ff_out   norm2                     │
+└─────────────────────────────────────┘
+           ↓
+      Output (B, M, H)
+
+
+
+
 TransformerSeq es el modelo completo end-to-end que:
 
 Convierte tokens (IDs) en embeddings
@@ -131,7 +180,141 @@ Maneja el cache para procesamiento secuencial eficiente
 
 Es lo que entrenaremos y usaremos para generación de texto.
 
+## Flujo Completo del Forward
 
+Input:
+  x: (2, 512)           # Token IDs
+  h_cache: [12 tensors] # Caches (uno por capa)
+  target: (2, 512)      # Targets (opcional)
+
+↓ [Embedding]
+h = in_emb(x)
+h: (2, 512, 512)        # Vectores densos
+
+↓ [Capa 0]
+h = layer_0(h, h_cache[0], key_pe)
+h_cache_next[0] = actualizar_cache(h, h_cache[0])
+
+↓ [Capa 1]
+h = layer_1(h, h_cache[1], key_pe)
+h_cache_next[1] = actualizar_cache(h, h_cache[1])
+
+...
+
+↓ [Capa 11]
+h = layer_11(h, h_cache[11], key_pe)
+h_cache_next[11] = actualizar_cache(h, h_cache[11])
+
+↓ [Output]
+logits = out_emb(h)     # (2, 512, 27)
+out = log_softmax(logits, dim=-1)
+
+↓ [Return]
+return out, h_cache_next, None
+
+
+### Flujo Completo
+
+main.py
+  └─> train_iteration(eval_only=False, nb_batches=1000)
+       │
+       ├─> Loop: 1000 batches
+       │    │
+       │    └─> _train_batch()
+       │         │
+       │         ├─> optimizer.zero_grad()
+       │         │
+       │         └─> _train_step()
+       │              │
+       │              ├─> model.forward(X, h_cache, target=Y)
+       │              │    └─> Devuelve: (out, h_cache_next, dummy_loss)
+       │              │
+       │              ├─> Calcula loss principal
+       │              │
+       │              ├─> loss += adaptive_span_loss  ← SOLO EN TRAIN
+       │              │    └─> Penaliza spans largos
+       │              │
+       │              └─> loss.backward()  ← GRADIENTES
+       │
+       └─> optimizer.step()  ← ACTUALIZA PESOS
+       └─> adaptive_span.clamp_param()  ← z ∈ [0,1]
+
+
+### 🎯 RESUMEN CONCEPTUAL
+
+ **Training:**
+
+Procesar bloque → Calcular loss → Agregar adaptive_span_loss → 
+Backward → Actualizar pesos → Clamp parámetros → Siguiente bloque
+
+
+ **Eval (rápido):**
+Procesar 10% de bloques → Calcular loss → 
+Log para monitorear → (NO tocar pesos)
+
+
+### Data
+
+## 📊 FLUJO COMPLETO DE DATOS
+
+1. get_train_val_test_data()
+    ↓
+2. _build_corpus()
+    ↓
+3. Dictionary('train.txt', sort_dict)
+    - Construye vocabulario
+    ↓
+4. _tokenize() para train/val/test
+    - Convierte texto → índices
+    ↓
+5. _batchify()
+    - Reorganiza: (seq_len,) → (batch_size, seq_per_batch)
+    ↓
+6. División para distributed (si aplica)
+    - Cada GPU toma su slice
+    ↓
+7. .to(device)
+    - Mover a GPU
+    ↓
+8. Retornar tensors listos para entrenamiento
+
+
+## 🎯 FLUJO COMPLETO RESUMIDO
+
+1. Parse argumentos (config.py)
+    ↓
+2. Setup environment (GPUs, distributed)
+    ↓
+3. Load data (tokenize, batchify, to device)
+    ↓
+4. Create model (TransformerSeq con adaptive span)
+    ↓
+5. Wrap con DistributedDataParallel
+    ↓
+6. Create optimizer (Adagrad) y scheduler (warmup)
+    ↓
+7. Create logger
+    ↓
+8. Load checkpoint (si existe)
+    ↓
+9. Initialize cache (zeros)
+    ↓
+10. Training loop:
+    ├─> Train iteration (1000 batches)
+    │   ├─> Forward
+    │   ├─> Backward
+    │   ├─> Optimizer step
+    │   └─> Update cache
+    │
+    ├─> Val iteration (100 batches)
+    │   ├─> Forward (sin backward)
+    │   └─> Update cache
+    │
+    ├─> Aggregate results (distributed)
+    ├─> Log metrics
+    └─> Save checkpoint
+    ↓
+11. (Opcional) Full eval en test set
 
 
 
