@@ -85,7 +85,7 @@ def _build_corpus(data_path, env_params, sort_dict):
         corpus_path = os.path.join(data_path, 'corpus.pt')
     if os.path.exists(corpus_path):
         print('Loading an existing corpus file from {}'.format(corpus_path))
-        corpus = torch.load(corpus_path)
+        corpus = torch.load(corpus_path, weights_only=False, map_location="cpu")
     else:
         print('Creating a corpus file at {}'.format(corpus_path))
         if env_params['distributed']:
