@@ -25,7 +25,7 @@ PARAMS_CONFIG = {
     'data_params': {
         '--data': {
             'type': str,
-            'default': 'data/enwik8',  # O 'data/text8
+            'default': 'data/text8',  # O 'data/enwik8
             'help': 'data location',
             'dest': 'data_path'
         },
