@@ -190,7 +190,7 @@ def _build_corpus(data_path, sort_dict):
     
     if os.path.exists(corpus_path):
         print(f'Loading corpus from {corpus_path}')
-        corpus = torch.load(corpus_path)
+        corpus = torch.load(corpus_path, weights_only=False, map_location="cpu")
     else:
         print(f'Creating corpus at {corpus_path}')
         corpus = Corpus(data_path, sort_dict)
