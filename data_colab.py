@@ -215,7 +215,7 @@ def get_train_val_test_data(data_params, env_params, batch_size,
     
     # Build corpus
     corpus = _build_corpus(data_path, sort_dict)
-    data_params['vocab_size'] = corpus.vocab_size
+    data_params['vocab_size'] = 28
     
     # Batchify
     train_data = _batchify(corpus.train, batch_size)
