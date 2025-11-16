@@ -128,7 +128,7 @@ def _load_checkpoint(checkpoint_path, model, optimizer, scheduler, logger,
     else:
         checkpoint_state = torch.load(checkpoint_path)
     iter_init = checkpoint_state['iter_no'] + 1  # next iteration
-    model.load_state_dict(checkpoint_state['model'])
+    mmodel.load_state_dict(checkpoint_state['model'], strict=False)
     optimizer.load_state_dict(checkpoint_state['optimizer'])
     logger.load_state_dict(checkpoint_state['logger'])
     if 'scheduler_iter' in checkpoint_state:
