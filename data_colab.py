@@ -97,14 +97,14 @@ def download_text8(data_dir='data'):
     print('Preparando text8 desde Kaggle input...')
     os.makedirs(text8_dir, exist_ok=True)
     
-    # OPCIÓN A: Si el dataset tiene el archivo text8
-    kaggle_text8 = '/kaggle/input/text8-dataset/text8'  # ← Ajustar ruta
+   
+    kaggle_text8 = '/kaggle/input/text8-zip/text8'  # ← Ajustar ruta
     
     if os.path.exists(kaggle_text8):
         with open(kaggle_text8, 'r') as f:
             data = f.read()
     else:
-        # OPCIÓN B: Si ya tiene train/val/test
+        
         import shutil
         shutil.copytree('/kaggle/input/text8-dataset', text8_dir)
         return text8_dir
