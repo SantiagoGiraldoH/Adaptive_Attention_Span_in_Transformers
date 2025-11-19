@@ -85,42 +85,41 @@ def _batchify(data_tensor, batch_size):
 
 
 def download_text8(data_dir='data'):
-    """Download and prepare text8 dataset"""
+    """Copiar text8 desde Kaggle input"""
     text8_dir = os.path.join(data_dir, 'text8')
     
+    # Verificar si ya está preparado
     if os.path.exists(text8_dir) and \
        os.path.exists(os.path.join(text8_dir, 'train.txt')):
         print(f'text8 already exists at {text8_dir}')
         return text8_dir
     
-    print('Downloading text8...')
+    print('Preparando text8 desde Kaggle input...')
     os.makedirs(text8_dir, exist_ok=True)
     
-    # Download
-    url = 'http://mattmahoney.net/dc/text8.zip'
-    zip_path = os.path.join(text8_dir, 'text8.zip')
-    urllib.request.urlretrieve(url, zip_path)
+    # OPCIÓN A: Si el dataset tiene el archivo text8
+    kaggle_text8 = '/kaggle/input/text8-dataset/text8'  # ← Ajustar ruta
     
-    # Extract
-    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-        zip_ref.extractall(text8_dir)
-    
-    # Prepare splits
-    print('Preparing splits...')
-    with open(os.path.join(text8_dir, 'text8'), 'r') as f:
-        data = f.read()
+    if os.path.exists(kaggle_text8):
+        with open(kaggle_text8, 'r') as f:
+            data = f.read()
+    else:
+        # OPCIÓN B: Si ya tiene train/val/test
+        import shutil
+        shutil.copytree('/kaggle/input/text8-dataset', text8_dir)
+        return text8_dir
     
     # Split: 90M train, 5M val, 5M test
     train_data = data[:90000000]
     val_data = data[90000000:95000000]
     test_data = data[95000000:100000000]
     
-    # Add spaces between characters (character-level)
+    # Character-level (espacios entre caracteres)
     train_data = ' '.join(list(train_data))
     val_data = ' '.join(list(val_data))
     test_data = ' '.join(list(test_data))
     
-    # Save
+    # Guardar
     with open(os.path.join(text8_dir, 'train.txt'), 'w') as f:
         f.write(train_data)
     with open(os.path.join(text8_dir, 'valid.txt'), 'w') as f:
@@ -128,7 +127,7 @@ def download_text8(data_dir='data'):
     with open(os.path.join(text8_dir, 'test.txt'), 'w') as f:
         f.write(test_data)
     
-    print(f'text8 prepared at {text8_dir}')
+    print(f'text8 preparado en {text8_dir}')
     return text8_dir
 
 
